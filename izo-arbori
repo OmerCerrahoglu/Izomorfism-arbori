@@ -1,0 +1,158 @@
+#include<stdio.h>
+#include<vector>
+#include<algorithm>
+const int N=100001, MOD=666013, X=53;
+using namespace std;
+FILE *f,*g;
+
+vector<int> graph[2][N];
+
+vector<pair<int, int> > fii[2][N];
+
+int n;
+
+int arb[N], tata[N]; bool seen[N]; int fhash[2][N];
+
+//citeste grafurile si le pune in graph[0] si graph[1];
+void read(void){          
+
+    f=fopen("izoarbori.in","r");
+    g=fopen("izoarbori.out","w");
+
+    fscanf(f,"%d",&n);
+    
+    int i,a,b;
+
+    for(i=1;i<=n-1;i++){
+        fscanf(f,"%d%d",&a,&b);
+        graph[0][a].push_back(b); graph[0][b].push_back(a);
+    }
+
+    for(i=1;i<=n-1;i++){
+        fscanf(f,"%d%d",&a,&b);
+        graph[1][a].push_back(b); graph[1][b].push_back(a);
+    }
+}
+
+//dfs pentru nodurile speciale
+void dfs(int v, bool ok){
+
+    vector<int>::iterator it=graph[ok][v].begin(); 
+    arb[v]=1; seen[v]=1;
+    
+    while( it != graph[ok][v].end() ){
+            
+        if (!seen[*it]){
+            dfs(*it,ok);
+            arb[v]+=arb[*it]; tata[*it]=v;
+        }
+
+        it++;
+    }
+}
+
+//gaseste nodurile speciale
+pair<int,int> findspecial(bool ko){
+
+    int i; int sol[2]={0,0};
+    for(i=1;i<=n;i++) {seen[i]=0; arb[i]=0;}
+
+    dfs(1,ko);
+    int ok=0;  int maxarb; vector<int>::iterator it; i=1; int urm=1;
+
+    while (ok <= 1 && urm){
+        
+        it=graph[ko][i].begin(); maxarb=0;
+        while (it != graph[ko][i].end()){
+
+            if (*it != tata[i] && arb[*it] > maxarb) { urm=*it; maxarb=arb[urm]; }
+            else if (*it == tata[i] && arb[*it] > maxarb) { urm=0; maxarb=arb[*it]; }
+            it++;
+        }
+
+        if (ok == 1) {if (maxarb <= n/2) sol[ok++]=i; else ok++;}
+        else if (maxarb <= n/2) sol[ok++]=i;
+
+        arb[i]=n-arb[urm];
+        i=urm;
+    }
+
+    return make_pair(sol[0],sol[1]);
+
+}
+
+//se foloseste tot timpul inainte de DFSH
+void inith(void){
+    for(int i=1;i<=n;i++) seen[i]=0; 
+}
+
+void dfsh(int v, bool ok){
+
+    seen[v]=1; fhash[ok][v]=5;
+    vector<int>::iterator it=graph[ok][v].begin();
+
+    while (it != graph[ok][v].end()){
+        
+        if (! seen[*it]){
+
+            dfsh(*it,ok);
+            fii[ok][v].push_back(make_pair(fhash[ok][*it],*it));
+        }
+
+        it++;
+    }
+    
+    sort(fii[ok][v].begin(),fii[ok][v].end());
+    vector<pair<int,int> >::iterator itt=fii[ok][v].begin();
+    
+    int aux=1;
+    while(itt != fii[ok][v].end()){
+        fhash[ok][v] = (fhash[ok][v]+(long long)itt->first*aux)%MOD;
+        aux*=X; if (aux > MOD) aux%=MOD;
+        itt++;
+    }
+}
+
+//functie auxiliara pentru solve
+bool check(int v0, int v1){
+    
+    if (fhash[0][v0] != fhash[1][v1] || fii[0][v0].size() != fii[1][v1].size()) return 0;
+    vector<pair<int,int> >::iterator it0=fii[0][v0].begin(), it1=fii[1][v1].begin();
+
+    while (it0 != fii[0][v0].end()){
+        if (! check(it0->second,it1->second)) return 0;
+        it0++, it1++;
+    }
+    return 1;
+}
+
+bool solve(void){
+
+    pair<int,int> p0=findspecial(0), p1=findspecial(1);
+    
+    inith(); dfsh(p0.first,0); inith(); dfsh(p1.first,1);
+    if (check(p0.first,p1.first)) return 1;
+
+    for(int i=1;i<=n;i++) fhash[1][i]=0;
+    if (p1.second) {
+        inith(); dfsh(p1.second,1);
+        if (check(p0.first,p1.second)) return 1;
+    }
+    
+    return 0;
+}
+
+
+
+int main(void){
+    
+    read();
+    if (solve()) fprintf(g,"YES");
+    else fprintf(g,"NO");
+
+    return 0;
+}
+
+
+
+
